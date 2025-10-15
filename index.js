@@ -9,27 +9,30 @@ const app = express();
 app.use(cors());
 app.use("/public", express.static(process.cwd() + "/public"));
 
-// Serve index
+// Serve the front-end form
 app.get("/", (req, res) => {
   res.sendFile(process.cwd() + "/views/index.html");
 });
 
-// Multer config: store to uploads/ with original filename (temp)
+// Ensure uploads directory exists (multer will write files here)
+const UPLOAD_DIR = "uploads";
+
+// Multer storage config (stores to uploads/ and keeps originalname in req.file.originalname)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/");
+    cb(null, UPLOAD_DIR);
   },
   filename: function (req, file, cb) {
-    // use unique name to avoid collisions
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
+    // Use a unique filename so uploads don’t collide
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   },
 });
 const upload = multer({ storage: storage });
 
-// POST endpoint expected by FCC: /api/fileanalyse
+// POST endpoint expected by FCC. Field name MUST be 'upfile'
 app.post("/api/fileanalyse", upload.single("upfile"), (req, res) => {
-  // Debug log (comment out after confirming)
+  // Debug: log req.file to console so we can see what multer produced
   console.log("FILE UPLOAD RECEIVED:", req.file);
 
   if (!req.file) {
@@ -40,7 +43,7 @@ app.post("/api/fileanalyse", upload.single("upfile"), (req, res) => {
       });
   }
 
-  // Respond with exact keys FCC expects
+  // Return exactly the keys expected by FCC
   res.json({
     name: req.file.originalname,
     type: req.file.mimetype,
@@ -50,6 +53,6 @@ app.post("/api/fileanalyse", upload.single("upfile"), (req, res) => {
 
 // Start server
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
+app.listen(port, function () {
   console.log("Your app is listening on port " + port);
 });
